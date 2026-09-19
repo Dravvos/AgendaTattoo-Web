@@ -1,0 +1,38 @@
+:root {
+  /* Paleta — "caderno de flash": tinta, papel envelhecido e latão da máquina */
+  --ink-900: #17140f;
+  --ink-800: #201b14;
+  --ink-700: #2a2319;
+  --line-on-ink: #3a3325;
+
+  --paper-100: #f4efe3;
+  --paper-200: #ede6d5;
+  --paper-300: #e2d9c2;
+  --line-on-paper: #c9bc9c;
+
+  --brass-300: #d9ba78;
+  --brass-400: #c89f52;
+  --brass-500: #a9793c;
+  --brass-600: #8f6530;
+  --brass-700: #725029;
+
+  --text-on-ink: #ede6d5;
+  --text-on-ink-muted: #b3a68a;
+  --text-on-paper: #241f17;
+  --text-on-paper-muted: #6b6350;
+
+  --success: #4c7a54;
+  --danger: #a5443b;
+
+  /* Tipografia */
+  --font-display: 'Big Shoulders Display', sans-serif;
+  --font-body: 'Work Sans', sans-serif;
+
+  /* Layout */
+  --content-width: 1160px;
+  --content-padding: 24px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  --shadow-card: 0 12px 30px -18px rgba(23, 20, 15, 0.45);
+}

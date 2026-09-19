@@ -1,0 +1,83 @@
+.auth-title {
+  font-size: 32px;
+  color: var(--text-on-paper);
+}
+
+.auth-subtitle {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text-on-paper-muted);
+}
+
+.auth-message {
+  margin-top: 24px;
+}
+
+.auth-form {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-on-paper);
+}
+
+.field__error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-on-paper);
+  cursor: pointer;
+}
+
+.auth-link {
+  font-size: 14px;
+  color: var(--text-on-paper-muted);
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  color: var(--brass-600);
+}
+
+.auth-switch {
+  margin-top: 28px;
+  font-size: 14px;
+  color: var(--text-on-paper-muted);
+  text-align: center;
+}
+
+.auth-switch a {
+  color: var(--brass-600);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
