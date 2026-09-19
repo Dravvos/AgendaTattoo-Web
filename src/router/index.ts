@@ -20,8 +20,13 @@ const router = createRouter({
     path: '/cadastro',
     name: 'cadastro',
     component: RegisterView,
-
   },
+  {
+    path: '/agenda',
+    name: 'agenda',
+    // TODO: proteger esta rota (navigation guard) quando a sessão/login existir.
+    component: () => import('../views/ScheduleView.vue'),
+  }
 ],
  scrollBehavior(to) {
     if (to.hash) {
