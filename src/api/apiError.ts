@@ -89,3 +89,8 @@ export function extractValidationErrors(error: unknown): Record<string, string> 
   }
   return Object.keys(normalized).length > 0 ? normalized : undefined
 }
+
+/** Mensagem segura para mostrar na UI: usa a mensagem do ApiError quando existe, senão um fallback. */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback
+}

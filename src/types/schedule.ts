@@ -2,7 +2,7 @@ export interface Artist {
   id: string
   name: string
   /** Nome da variável CSS de cor usada pra identificar o artista na agenda (ex.: '--artist-1'). */
-  colorVar: string
+  colorVar: string | undefined
 }
 
 export type AppointmentStatus = 'pendente' | 'confirmado' | 'concluido' | 'cancelado'

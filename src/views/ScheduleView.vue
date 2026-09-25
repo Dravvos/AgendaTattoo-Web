@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import Message from 'primevue/message'
+import Button from 'primevue/button'
+import Skeleton from 'primevue/skeleton'
 import DashboardLayout from '../components/dashboard/DashboardLayout.vue'
 import ScheduleToolbar from '../components/schedule/ScheduleToolbar.vue'
 import WeekGrid from '../components/schedule/WeekGrid.vue'
-import NewAppointmentDialog from '../components/schedule/NewAppointmentDialog.vue'
+import NewAppointmentDialog, {
+  type NewAppointmentPayload,
+} from '../components/schedule/NewAppointmentDialog.vue'
 import AppointmentDetailsDialog from '../components/schedule/AppointmentDetailsDialog.vue'
-import { mockArtists, mockAppointments } from '../data/mockSchedule'
-import type { Appointment } from '../types/schedule'
+import { useSchedule, type ScheduleActionResult } from '../composables/useSchedule'
+import type { Appointment, Artist } from '../types/schedule'
 import { addDays, startOfWeek, toDateKey } from '../utils/date'
 
-const artists = mockArtists
-const appointments = ref<Appointment[]>([...mockAppointments])
+const { artists, appointments, isLoading, error, loadArtists, loadAppointments, createAppointment, cancelAppointment } =
+  useSchedule()
 
 const currentWeekStart = ref(startOfWeek(new Date()))
 const selectedArtistId = ref<string>('all')
@@ -19,12 +24,20 @@ const weekDays = computed(() => Array.from({ length: 6 }, (_, i) => addDays(curr
 const hours = Array.from({ length: 11 }, (_, i) => 9 + i) // 09:00 – 19:00 (grade fecha às 20:00)
 
 const visibleAppointments = computed(() => {
-  const weekEnd = addDays(currentWeekStart.value, 6)
-  return appointments.value.filter((appointment) => {
-    const withinWeek = appointment.start >= currentWeekStart.value && appointment.start < weekEnd
-    const matchesArtist = selectedArtistId.value === 'all' || appointment.artistId === selectedArtistId.value
-    return withinWeek && matchesArtist
-  })
+  if (selectedArtistId.value === 'all') return appointments.value
+  return appointments.value.filter((appointment: Appointment) => appointment.artistId === selectedArtistId.value)
+})
+
+async function refreshAll(): Promise<void> {
+  await Promise.all([loadArtists(), loadAppointments(currentWeekStart.value)])
+}
+
+onMounted(() => {
+  refreshAll();
+})
+
+watch(currentWeekStart, (weekStart) => {
+  loadAppointments(weekStart)
 })
 
 function goToPrevWeek(): void {
@@ -48,30 +61,23 @@ function openCreateDialog(prefill: { day: Date; hour: number } | null = null): v
   isCreateDialogOpen.value = true
 }
 
-function handleCreateSubmit(payload: {
-  artistId: string
-  clientName: string
-  service: string
-  dayKey: string
-  startTime: string
-  durationHours: number
-}): void {
+async function handleCreateSubmit(payload: NewAppointmentPayload): Promise<ScheduleActionResult> {
   const day = weekDays.value.find((d) => toDateKey(d) === payload.dayKey)
-  if (!day) return
+  if (!day) {
+    return { success: false, message: 'Dia inválido — selecione novamente.' }
+  }
 
   const [hourStr, minuteStr] = payload.startTime.split(':')
   const start = new Date(day)
   start.setHours(Number(hourStr), Number(minuteStr), 0, 0)
   const end = new Date(start.getTime() + payload.durationHours * 60 * 60 * 1000)
 
-  appointments.value.push({
-    id: crypto.randomUUID(),
+  return createAppointment({
     artistId: payload.artistId,
     clientName: payload.clientName,
     service: payload.service,
     start,
     end,
-    status: 'pendente',
   })
 }
 
@@ -85,12 +91,11 @@ function openDetailsDialog(appointment: Appointment): void {
 }
 
 const selectedArtist = computed(() =>
-  artists.find((artist) => artist.id === selectedAppointment.value?.artistId),
+  artists.value.find((artist: Artist) => artist.id === selectedAppointment.value?.artistId),
 )
 
-function handleCancelAppointment(target: Appointment): void {
-  const found = appointments.value.find((appointment) => appointment.id === target.id)
-  if (found) found.status = 'cancelado'
+async function handleCancelAppointment(appointment: Appointment): Promise<ScheduleActionResult> {
+  return cancelAppointment(appointment.id)
 }
 </script>
 
@@ -102,40 +107,26 @@ function handleCancelAppointment(target: Appointment): void {
         <p>Visão semanal dos agendamentos, por tatuador.</p>
       </div>
 
-      <ScheduleToolbar
-        v-model:selected-artist-id="selectedArtistId"
-        :week-start="currentWeekStart"
-        :artists="artists"
-        @prev-week="goToPrevWeek"
-        @next-week="goToNextWeek"
-        @today="goToToday"
-        @create="openCreateDialog()"
-      />
+      <Message v-if="error" severity="error" :closable="false" class="schedule-page__error">
+        <div class="schedule-page__error-row">
+          <span>{{ error }}</span>
+          <Button label="Tentar novamente" text size="small" @click="refreshAll" />
+        </div>
+      </Message>
 
-      <WeekGrid
-        :days="weekDays"
-        :hours="hours"
-        :appointments="visibleAppointments"
-        :artists="artists"
-        @select-appointment="openDetailsDialog"
-        @create-appointment="openCreateDialog"
-      />
+      <ScheduleToolbar v-model:selected-artist-id="selectedArtistId" :week-start="currentWeekStart" :artists="artists"
+        @prev-week="goToPrevWeek" @next-week="goToNextWeek" @today="goToToday" @create="openCreateDialog()" />
+
+      <Skeleton v-if="isLoading" height="620px" />
+      <WeekGrid v-else :days="weekDays" :hours="hours" :appointments="visibleAppointments" :artists="artists"
+        @select-appointment="openDetailsDialog" @create-appointment="openCreateDialog" />
     </div>
 
-    <NewAppointmentDialog
-      v-model:visible="isCreateDialogOpen"
-      :artists="artists"
-      :week-days="weekDays"
-      :prefill="createPrefill"
-      @submit="handleCreateSubmit"
-    />
+    <NewAppointmentDialog v-model:visible="isCreateDialogOpen" :artists="artists" :week-days="weekDays"
+      :prefill="createPrefill" :on-submit="handleCreateSubmit" />
 
-    <AppointmentDetailsDialog
-      v-model:visible="isDetailsDialogOpen"
-      :appointment="selectedAppointment"
-      :artist="selectedArtist"
-      @cancel-appointment="handleCancelAppointment"
-    />
+    <AppointmentDetailsDialog v-model:visible="isDetailsDialogOpen" :appointment="selectedAppointment"
+      :artist="selectedArtist" :on-cancel="handleCancelAppointment" />
   </DashboardLayout>
 </template>
 
@@ -153,5 +144,17 @@ function handleCancelAppointment(target: Appointment): void {
   margin-top: 4px;
   font-size: 14px;
   color: var(--text-on-paper-muted);
+}
+
+.schedule-page__error {
+  margin-bottom: 16px;
+}
+
+.schedule-page__error-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
 }
 </style>

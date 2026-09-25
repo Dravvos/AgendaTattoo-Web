@@ -7,14 +7,17 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   studioName: string
-  fullName: string
+  ownerFullName: string
   email: string
-  password: string
+  password: string,
+  studioSlug: string
 }
 
 // TODO: ajustar conforme o retorno real do endpoint de autenticação quando existir.
 export interface AuthResponse {
-  token: string
+  token: string,
+  refreshToken: string,
+  accessTokenExpiresAt: Date
 }
 
 /**
@@ -27,6 +30,6 @@ export const authApi = {
   },
 
   register(payload: RegisterRequest): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/auth/register', payload)
+    return apiClient.post<AuthResponse>('/auth/register-studio', payload)
   },
 }

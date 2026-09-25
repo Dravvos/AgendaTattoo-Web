@@ -1,28 +1,30 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
+import Message from 'primevue/message'
 import type { Artist } from '../../types/schedule'
+import type { ScheduleActionResult } from '../../composables/useSchedule'
 import { formatDayOptionLabel, toDateKey } from '../../utils/date'
+
+export interface NewAppointmentPayload {
+  artistId: string
+  clientName: string
+  service: string
+  dayKey: string
+  startTime: string
+  durationHours: number
+}
 
 const props = defineProps<{
   artists: Artist[]
   weekDays: Date[]
   /** Preenche o formulário quando o diálogo é aberto a partir de um clique na grade. */
   prefill: { day: Date; hour: number } | null
-}>()
-
-const emit = defineEmits<{
-  submit: [payload: {
-    artistId: string
-    clientName: string
-    service: string
-    dayKey: string
-    startTime: string
-    durationHours: number
-  }]
+  /** Faz a chamada à API e devolve o resultado — o diálogo só fecha sozinho em caso de sucesso. */
+  onSubmit: (payload: NewAppointmentPayload) => Promise<ScheduleActionResult>
 }>()
 
 const visible = defineModel<boolean>('visible', { required: true })
@@ -57,6 +59,9 @@ const errors = reactive({
   startTime: '',
 })
 
+const submitting = ref(false)
+const generalError = ref('')
+
 const dayOptions = computed(() =>
   props.weekDays.map((day) => ({
     label: formatDayOptionLabel(day),
@@ -85,13 +90,15 @@ const durationOptions = [
   { label: 'Dia inteiro (8h)', value: 8 },
 ]
 
-// Pré-preenche dia/horário quando o diálogo é aberto a partir de um clique na grade.
+// Pré-preenche dia/horário quando o diálogo é aberto a partir de um clique na grade,
+// e limpa o formulário e os erros de uma submissão anterior.
 watch(
   () => [visible.value, props.prefill] as const,
   ([isVisible, prefill]) => {
     if (!isVisible) return
     Object.assign(form, emptyForm())
     Object.assign(errors, { clientName: '', artistId: '', service: '', dayKey: '', startTime: '' })
+    generalError.value = ''
     if (prefill) {
       form.dayKey = toDateKey(prefill.day)
       form.startTime = `${String(prefill.hour).padStart(2, '0')}:00`
@@ -108,23 +115,51 @@ function validate(): boolean {
   return !Object.values(errors).some(Boolean)
 }
 
-function handleSubmit(): void {
+const FIELD_ERROR_MAP: Record<string, keyof typeof errors> = {
+  clientname: 'clientName',
+  artistid: 'artistId',
+  service: 'service',
+}
+
+async function handleSubmit(): Promise<void> {
+  generalError.value = ''
   if (!validate()) return
 
-  emit('submit', {
-    artistId: form.artistId,
-    clientName: form.clientName.trim(),
-    service: form.service.trim(),
-    dayKey: form.dayKey,
-    startTime: form.startTime,
-    durationHours: form.durationHours,
-  })
-  visible.value = false
+  submitting.value = true
+  try {
+    const result = await props.onSubmit({
+      artistId: form.artistId,
+      clientName: form.clientName.trim(),
+      service: form.service.trim(),
+      dayKey: form.dayKey,
+      startTime: form.startTime,
+      durationHours: form.durationHours,
+    })
+
+    if (result.success) {
+      visible.value = false
+      return
+    }
+
+    generalError.value = result.message
+    if (result.fieldErrors) {
+      for (const [key, message] of Object.entries(result.fieldErrors)) {
+        const target = FIELD_ERROR_MAP[key]
+        if (target) errors[target] = message
+      }
+    }
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
 <template>
   <Dialog v-model:visible="visible" modal header="Novo agendamento" :style="{ width: '420px' }">
+    <Message v-if="generalError" severity="error" :closable="false" class="dialog-message">
+      {{ generalError }}
+    </Message>
+
     <form class="new-appointment-form" novalidate @submit.prevent="handleSubmit">
       <div class="field">
         <label for="client-name">Cliente</label>
@@ -211,8 +246,8 @@ function handleSubmit(): void {
     </form>
 
     <template #footer>
-      <Button label="Cancelar" text @click="visible = false" />
-      <Button label="Salvar agendamento" @click="handleSubmit" />
+      <Button label="Cancelar" text :disabled="submitting" @click="visible = false" />
+      <Button label="Salvar agendamento" :loading="submitting" @click="handleSubmit" />
     </template>
   </Dialog>
 </template>
@@ -228,5 +263,9 @@ function handleSubmit(): void {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.dialog-message {
+  margin-bottom: 16px;
 }
 </style>
