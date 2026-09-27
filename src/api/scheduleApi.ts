@@ -1,3 +1,4 @@
+import type { ClientDto, ServiceDto } from '@/types/settings'
 import { apiClient } from './client'
 
 // Formato como a API deve devolver cada artista.
@@ -13,18 +14,20 @@ export interface AppointmentDto {
   id: string
   artistId: string
   clientName: string
-  service: string
-  start: string
-  end: string
+  clientId: string
+  serviceId: string
+  serviceName: string
+  startsAt: string
+  endsAt: string
   status: string
+  artistName: string
 }
 
 export interface CreateAppointmentRequest {
   artistId: string
-  clientName: string
-  service: string
-  start: string
-  end: string
+  clientId: string
+  serviceId: string
+  startsAt: string
 }
 
 export interface ListAppointmentsParams {
@@ -60,4 +63,13 @@ export const scheduleApi = {
   cancelAppointment(id: string): Promise<void> {
     return apiClient.patch<void>(`/appointments/${id}/cancel`)
   },
+
+  listClients(): Promise<ClientDto[]> {
+    return apiClient.get<ClientDto[]>('/clients')
+  },
+
+  listServices(): Promise<ServiceDto[]> {
+    return apiClient.get<ServiceDto[]>('/services')
+
+  }
 }

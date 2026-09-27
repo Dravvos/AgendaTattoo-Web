@@ -17,7 +17,7 @@ import { apiClient } from '@/api/client.ts'
 import { useAuth } from '@/composables/useAuth.ts'
 import router from '@/router/index.ts'
 
-const { artists, appointments, isLoading, error, loadArtists, loadAppointments, createAppointment, cancelAppointment } =
+const { artists, appointments, clients, isLoading, error, services, loadArtists, loadAppointments, createAppointment, cancelAppointment, loadClients, loadServices } =
   useSchedule()
 
 const currentWeekStart = ref(startOfWeek(new Date()))
@@ -34,7 +34,7 @@ const visibleAppointments = computed(() => {
 async function refreshAll(): Promise<void> {
   let me = await apiClient.get<any>('/me');
 
-  await Promise.all([loadArtists(me.studioSlug), loadAppointments(currentWeekStart.value)])
+  await Promise.all([loadArtists(me.studioSlug), loadAppointments(currentWeekStart.value), loadClients(), loadServices()])
 }
 
 const auth = useAuth();
@@ -78,17 +78,15 @@ async function handleCreateSubmit(payload: NewAppointmentPayload): Promise<Sched
     return { success: false, message: 'Dia inválido — selecione novamente.' }
   }
 
-  const [hourStr, minuteStr] = payload.startTime.split(':')
+  const [hourStr, minuteStr] = payload.startsAt.split(':')
   const start = new Date(day)
   start.setHours(Number(hourStr), Number(minuteStr), 0, 0)
-  const end = new Date(start.getTime() + payload.durationHours * 60 * 60 * 1000)
 
   return createAppointment({
     artistId: payload.artistId,
-    clientName: payload.clientName,
-    service: payload.service,
-    start,
-    end,
+    clientId: payload.clientId,
+    serviceId: payload.serviceId,
+    startsAt: payload.startsAt,
   })
 }
 
@@ -134,7 +132,7 @@ async function handleCancelAppointment(appointment: Appointment): Promise<Schedu
     </div>
 
     <NewAppointmentDialog v-model:visible="isCreateDialogOpen" :artists="artists" :week-days="weekDays"
-      :prefill="createPrefill" :on-submit="handleCreateSubmit" />
+      :prefill="createPrefill" :clients="clients" :services="services" :on-submit="handleCreateSubmit" />
 
     <AppointmentDetailsDialog v-model:visible="isDetailsDialogOpen" :appointment="selectedAppointment"
       :artist="selectedArtist" :on-cancel="handleCancelAppointment" />

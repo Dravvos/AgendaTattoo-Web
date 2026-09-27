@@ -15,7 +15,8 @@ const currentStudioName = ref<string>('Estúdio Tinta & Agulha')
 
 const navItems = [
   { label: 'Agenda', to: '/agenda', enabled: true },
-  { label: 'Clientes', to: '#', enabled: false },
+  { label: 'Equipe', to: '/equipe', enabled: true },
+  { label: 'Clientes', to: '/clientes', enabled: true },
   { label: 'Serviços', to: '/servicos', enabled: true },
   { label: 'Disponibilidade', to: '/disponibilidade', enabled: true },
 ]

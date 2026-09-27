@@ -10,6 +10,7 @@ export type AppointmentStatus = 'pendente' | 'confirmado' | 'concluido' | 'cance
 export interface Appointment {
   id: string
   artistId: string
+  artistName: string
   clientName: string
   service: string
   start: Date

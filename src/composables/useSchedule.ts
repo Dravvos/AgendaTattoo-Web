@@ -1,11 +1,12 @@
 import { computed, ref } from 'vue'
 import type { Appointment, AppointmentStatus, Artist } from '../types/schedule'
-import {  extractValidationErrors, type ArtistDto, type AppointmentDto } from '../api'
+import { extractValidationErrors, type ArtistDto, type AppointmentDto } from '../api'
 import { scheduleApi } from '@/api/scheduleApi'
 import { getErrorMessage } from '@/api/apiError'
 import { addDays } from '../utils/date'
+import type { ClientDto, ServiceDto } from '@/types/settings'
 
-const ARTIST_COLOR_VARS:string[] = ['--artist-1', '--artist-2', '--artist-3', '--artist-4']
+const ARTIST_COLOR_VARS: string[] = ['--artist-1', '--artist-2', '--artist-3', '--artist-4']
 const KNOWN_STATUSES: AppointmentStatus[] = ['pendente', 'confirmado', 'concluido', 'cancelado']
 
 function toArtist(dto: ArtistDto, index: number): Artist {
@@ -17,6 +18,7 @@ function toArtist(dto: ArtistDto, index: number): Artist {
 }
 
 function toAppointment(dto: AppointmentDto): Appointment {
+  debugger;
   const status = KNOWN_STATUSES.includes(dto.status as AppointmentStatus)
     ? (dto.status as AppointmentStatus)
     : 'pendente'
@@ -24,20 +26,20 @@ function toAppointment(dto: AppointmentDto): Appointment {
   return {
     id: dto.id,
     artistId: dto.artistId,
+    artistName: dto.artistName,
     clientName: dto.clientName,
-    service: dto.service,
-    start: new Date(dto.start),
-    end: new Date(dto.end),
+    service: dto.serviceName,
+    start: new Date(dto.startsAt),
+    end: new Date(dto.endsAt),
     status,
   }
 }
 
 export interface CreateAppointmentInput {
   artistId: string
-  clientName: string
-  service: string
-  start: Date
-  end: Date
+  clientId: string
+  serviceId: string
+  startsAt: string
 }
 
 export type ScheduleActionResult =
@@ -50,7 +52,9 @@ export type ScheduleActionResult =
  */
 export function useSchedule() {
   const artists = ref<Artist[]>([])
+  const clients = ref<ClientDto[]>([])
   const appointments = ref<Appointment[]>([])
+  const services = ref<ServiceDto[]>([])
 
   const isLoadingArtists = ref(false)
   const isLoadingAppointments = ref(false)
@@ -92,10 +96,9 @@ export function useSchedule() {
     try {
       const dto = await scheduleApi.createAppointment({
         artistId: input.artistId,
-        clientName: input.clientName,
-        service: input.service,
-        start: input.start.toISOString(),
-        end: input.end.toISOString(),
+        clientId: input.clientId,
+        serviceId: input.serviceId,
+        startsAt: input.startsAt
       })
       appointments.value.push(toAppointment(dto))
       return { success: true }
@@ -124,14 +127,48 @@ export function useSchedule() {
     }
   }
 
+  async function loadClients(): Promise<void> {
+    try {
+      const dtos = await scheduleApi.listClients();
+      clients.value = dtos;
+    }
+    catch (err) {
+      error.value = getErrorMessage(err, 'Não foi possível carregar os clientes.')
+    }
+  }
+
+  async function loadServices(): Promise<void> {
+    try {
+      const dtos = await scheduleApi.listServices();
+      services.value = dtos.map((item: ServiceDto) => {
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          durationMinutes: item.durationMinutes,
+          price: item.price,
+          isActive: item.isActive,
+          nameDescription: item.name + " - " + (item.description ?? "")
+        }
+      });
+    }
+    catch (err) {
+      error.value = getErrorMessage(err, 'Não foi possível carregar os serviços.')
+    }
+  }
+
   return {
     artists,
     appointments,
     isLoading,
     error,
+    clients,
+    services,
     loadArtists,
     loadAppointments,
     createAppointment,
     cancelAppointment,
+    loadClients,
+    loadServices,
   }
 }

@@ -7,7 +7,8 @@ export interface ServiceDto {
   description: string | null
   durationMinutes: number
   price: number
-  isActive: boolean
+  isActive: boolean,
+  nameDescription: string // name + description (se houver) — usado em selects
 }
 
 export interface CreateServiceRequest {
@@ -44,9 +45,45 @@ export interface SetWorkingHoursRequest {
   days: WorkingHoursEntryRequest[]
 }
 
-// NÃO existe ainda no backend fornecido — ver observação em services/availabilityApi.ts.
-// Endpoint sugerido: GET /api/studio/members (autenticado, retorna Owner + Artists do estúdio do usuário logado).
+export type StaffRole = 'Owner' | 'Artist'
+
+
 export interface StaffMemberDto {
   id: string
   fullName: string
+  email: string
+  role: StaffRole
+  isActive: boolean
+}
+
+export interface InviteArtistRequest {
+  fullName: string
+  email: string
+  password: string
+}
+
+export interface UpdateStaffMemberRequest {
+  fullName: string
+}
+
+export interface ClientDto {
+  id: string
+  fullName: string
+  phoneNumber: string
+  email: string | null
+  notes: string | null
+}
+
+export interface CreateClientRequest {
+  fullName: string
+  phoneNumber: string
+  email?: string | null
+  notes?: string | null
+}
+
+export interface UpdateClientRequest {
+  fullName: string
+  phoneNumber: string
+  email?: string | null
+  notes?: string | null
 }

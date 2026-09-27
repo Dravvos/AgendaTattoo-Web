@@ -97,7 +97,10 @@ async function loadStaff() {
 function toStaffMember(dto: Artist, index: number): StaffMemberDto {
   return {
     id: dto.id,
-    fullName: dto.name
+    fullName: dto.name,
+    email: '',
+    role: 'Artist',
+    isActive: true,
   }
 }
 
