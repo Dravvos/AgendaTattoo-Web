@@ -4,7 +4,7 @@ import { apiClient } from './client'
 // TODO: ajustar quando o endpoint real existir (ex.: campo de cor/avatar).
 export interface ArtistDto {
   id: string
-  name: string
+  fullName: string
 }
 
 // Formato como a API deve devolver cada agendamento. Datas chegam como string
@@ -41,8 +41,8 @@ export interface ListAppointmentsParams {
 export const scheduleApi = {
   // TODO: confirmar a rota real (pode virar algo como /studios/{studioId}/artists
   // quando o multi-tenant estiver definido no backend).
-  listArtists(): Promise<ArtistDto[]> {
-    return apiClient.get<ArtistDto[]>('/studios/me/artists')
+  listArtists(slug: string): Promise<ArtistDto[]> {
+    return apiClient.get<ArtistDto[]>('/public/studios/' + slug + '/artists')
   },
 
   listAppointments(params: ListAppointmentsParams): Promise<AppointmentDto[]> {

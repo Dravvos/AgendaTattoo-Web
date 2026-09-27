@@ -15,7 +15,7 @@ export interface RegisterRequest {
 
 // TODO: ajustar conforme o retorno real do endpoint de autenticação quando existir.
 export interface AuthResponse {
-  token: string,
+  accessToken: string,
   refreshToken: string,
   accessTokenExpiresAt: Date
 }

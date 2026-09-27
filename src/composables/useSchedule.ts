@@ -11,7 +11,7 @@ const KNOWN_STATUSES: AppointmentStatus[] = ['pendente', 'confirmado', 'concluid
 function toArtist(dto: ArtistDto, index: number): Artist {
   return {
     id: dto.id,
-    name: dto.name,
+    name: dto.fullName,
     colorVar: ARTIST_COLOR_VARS[index % ARTIST_COLOR_VARS.length],
   }
 }
@@ -58,10 +58,10 @@ export function useSchedule() {
 
   const error = ref<string | null>(null)
 
-  async function loadArtists(): Promise<void> {
+  async function loadArtists(slug: string): Promise<void> {
     isLoadingArtists.value = true
     try {
-      const dtos = await scheduleApi.listArtists()
+      const dtos = await scheduleApi.listArtists(slug);
       artists.value = dtos.map(toArtist)
       error.value = null
     } catch (err) {

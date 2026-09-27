@@ -1,6 +1,8 @@
 <script setup lang="ts"></script>
 
 <template>
+  <Toast />
+  <ConfirmDialog></ConfirmDialog>
   <router-view v-slot="{ Component }">
     <transition name="fade">
       <component :is="Component" />

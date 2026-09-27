@@ -74,6 +74,8 @@ export class HttpClient {
   constructor(
     private readonly baseUrl: string,
     private readonly defaultHeaders: HeadersInit = { 'Content-Type': 'application/json' },
+    /** Chamado a cada requisição — lê o token atual, então reflete login/logout sem recriar o client. */
+    private readonly getAuthToken?: () => string | null,
   ) {}
 
   private async request<T>(path: string, config: RequestConfig): Promise<T> {
@@ -84,11 +86,18 @@ export class HttpClient {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     config.signal?.addEventListener('abort', () => controller.abort(), { once: true })
 
+    const authToken = this.getAuthToken?.()
+    const headers: HeadersInit = {
+      ...this.defaultHeaders,
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...config.headers,
+    }
+
     let response: Response
     try {
       response = await fetch(url, {
         method: config.method,
-        headers: { ...this.defaultHeaders, ...config.headers },
+        headers,
         body: config.body !== undefined ? JSON.stringify(config.body) : undefined,
         signal: controller.signal,
       })

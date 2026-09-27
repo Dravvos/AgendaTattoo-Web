@@ -4,6 +4,8 @@ import LandingPage from '@/views/LandingPage.vue'
 import ScheduleView from '@/views/ScheduleView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import ServiceSettingsView from '@/views/ServiceSettingsView.vue'
+import AvailabilitySettingsView from '@/views/AvailabilitySettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,8 +32,20 @@ const router = createRouter({
       component: ScheduleView,
       meta: { requiresAuth: true }
     },
+    {
+      path: '/servicos',
+      name: "servicos",
+      component: ServiceSettingsView,
+      meta: { requiresAuth: true }
+    },
+{
+      path: '/disponibilidade',
+      name: "disponibilidade",
+      component: AvailabilitySettingsView,
+      meta: { requiresAuth: true }
+    }
     // Qualquer nova rota dentro da área logada (sob o DashboardLayout) deve
-  // levar `meta: { requiresAuth: true }` também.
+    // levar `meta: { requiresAuth: true }` também.
   ],
   scrollBehavior(to) {
     if (to.hash) {
@@ -41,14 +55,18 @@ const router = createRouter({
   },
 })
 
-
 router.beforeEach((to) => {
-  if (!to.meta.requiresAuth) return true
-
   const { isAuthenticated } = useAuth()
-  if (isAuthenticated.value) return true
 
-  return { name: 'login', query: { redirect: to.fullPath } }
+  if (to.meta.requiresAuth && !isAuthenticated.value) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.guestOnly && isAuthenticated.value) {
+    return typeof to.query.redirect === 'string' ? to.query.redirect : { name: 'agenda' }
+  }
+
+  return true
 })
 
 export default router

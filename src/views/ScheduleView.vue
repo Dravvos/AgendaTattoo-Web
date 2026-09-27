@@ -11,8 +11,11 @@ import NewAppointmentDialog, {
 } from '../components/schedule/NewAppointmentDialog.vue'
 import AppointmentDetailsDialog from '../components/schedule/AppointmentDetailsDialog.vue'
 import { useSchedule, type ScheduleActionResult } from '../composables/useSchedule'
-import type { Appointment, Artist } from '../types/schedule'
+import type { Appointment } from '../types/schedule'
 import { addDays, startOfWeek, toDateKey } from '../utils/date'
+import { apiClient } from '@/api/client.ts'
+import { useAuth } from '@/composables/useAuth.ts'
+import router from '@/router/index.ts'
 
 const { artists, appointments, isLoading, error, loadArtists, loadAppointments, createAppointment, cancelAppointment } =
   useSchedule()
@@ -25,15 +28,23 @@ const hours = Array.from({ length: 11 }, (_, i) => 9 + i) // 09:00 – 19:00 (gr
 
 const visibleAppointments = computed(() => {
   if (selectedArtistId.value === 'all') return appointments.value
-  return appointments.value.filter((appointment: Appointment) => appointment.artistId === selectedArtistId.value)
+  return appointments.value.filter((appointment) => appointment.artistId === selectedArtistId.value)
 })
 
 async function refreshAll(): Promise<void> {
-  await Promise.all([loadArtists(), loadAppointments(currentWeekStart.value)])
+  let me = await apiClient.get<any>('/me');
+
+  await Promise.all([loadArtists(me.studioSlug), loadAppointments(currentWeekStart.value)])
 }
 
+const auth = useAuth();
+
 onMounted(() => {
-  refreshAll();
+  if (!auth.isAuthenticated) {
+    router.push('/login');
+    auth.logout();
+  }
+  refreshAll()
 })
 
 watch(currentWeekStart, (weekStart) => {
@@ -91,7 +102,7 @@ function openDetailsDialog(appointment: Appointment): void {
 }
 
 const selectedArtist = computed(() =>
-  artists.value.find((artist: Artist) => artist.id === selectedAppointment.value?.artistId),
+  artists.value.find((artist) => artist.id === selectedAppointment.value?.artistId),
 )
 
 async function handleCancelAppointment(appointment: Appointment): Promise<ScheduleActionResult> {

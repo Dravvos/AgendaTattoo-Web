@@ -1,14 +1,45 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import LogoMark from '../landing/LogoMark.vue'
+import { useAuth } from '../../composables/useAuth'
+import { onMounted, ref } from 'vue'
+import { apiClient } from '@/api/client.ts'
+import { jwtDecode } from 'jwt-decode'
+import { useSchedule } from '@/composables/useSchedule.ts'
+import type { studioDto } from '@/types/studio.ts'
 
-// Placeholder até a sessão/login estarem ligados a uma API de verdade.
-const currentStudioName = 'Estúdio Tinta & Agulha'
+const router = useRouter()
+const auth = useAuth()
+// Placeholder até a sessão trazer dados do estúdio (a API ainda não devolve isso).
+const currentStudioName = ref<string>('Estúdio Tinta & Agulha')
 
 const navItems = [
   { label: 'Agenda', to: '/agenda', enabled: true },
   { label: 'Clientes', to: '#', enabled: false },
-  { label: 'Configurações', to: '#', enabled: false },
+  { label: 'Serviços', to: '/servicos', enabled: true },
+  { label: 'Disponibilidade', to: '/disponibilidade', enabled: true },
 ]
+
+function handleLogout(): void {
+  auth.logout()
+  router.push('/')
+}
+
+onMounted(async () => {
+
+  const studioName = sessionStorage.getItem('studioName');
+  if (studioName) {
+    currentStudioName.value = studioName;
+  }
+  else {
+    const studio = await apiClient.get<studioDto>('/me/getStudio');
+    currentStudioName.value = studio.name
+    sessionStorage.setItem('studioName', studio.name);
+  }
+
+
+})
+
 </script>
 
 <template>
@@ -20,14 +51,8 @@ const navItems = [
       </router-link>
 
       <nav class="dashboard-nav" aria-label="Navegação do painel">
-        <router-link
-          v-for="item in navItems"
-          :key="item.label"
-          :to="item.to"
-          class="dashboard-nav__item"
-          :class="{ 'dashboard-nav__item--disabled': !item.enabled }"
-          :aria-disabled="!item.enabled"
-        >
+        <router-link v-for="item in navItems" :key="item.label" :to="item.to" class="dashboard-nav__item"
+          :class="{ 'dashboard-nav__item--disabled': !item.enabled }" :aria-disabled="!item.enabled">
           {{ item.label }}
           <span v-if="!item.enabled" class="dashboard-nav__badge">em breve</span>
         </router-link>
@@ -35,7 +60,7 @@ const navItems = [
 
       <div class="dashboard-sidebar__footer">
         <p class="dashboard-sidebar__studio">{{ currentStudioName }}</p>
-        <router-link to="/" class="dashboard-sidebar__logout">Sair</router-link>
+        <button type="button" class="dashboard-sidebar__logout" @click="handleLogout">Sair</button>
       </div>
     </aside>
 
@@ -131,10 +156,16 @@ const navItems = [
 }
 
 .dashboard-sidebar__logout {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
   font-size: 13px;
   color: var(--text-on-ink-muted);
   text-decoration: none;
+  text-align: left;
   width: fit-content;
+  cursor: pointer;
 }
 
 .dashboard-sidebar__logout:hover {

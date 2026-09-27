@@ -1,21 +1,29 @@
+import { jwtDecode } from 'jwt-decode';
 import { computed, ref } from 'vue'
 
 const TOKEN_STORAGE_KEY = 'flashbook:token'
 
-function readStoredToken(): string | null {
+function readStoredToken(): string {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY)
+    return localStorage.getItem(TOKEN_STORAGE_KEY) ?? "";
   } catch {
     // localStorage pode não estar disponível (modo privado, navegador antigo, etc.).
-    return null
+    return '';
   }
 }
 
 // Estado no nível do módulo: todo `useAuth()` compartilha a mesma referência,
 // então funciona como um mini-store sem precisar de Pinia.
-const token = ref<string | null>(readStoredToken())
+const token = ref<string>(readStoredToken())
 
-const isAuthenticated = computed(() => token.value !== null)
+const isAuthenticated = computed(() => {
+  const decoded = jwtDecode(token.value);
+  const now = new Date();
+  const exp = decoded.exp as number;
+  const expireDate = new Date(exp * 1000);
+  const isAuth = token.value !== null &&  now < expireDate;
+  return isAuth;
+})
 
 function login(newToken: string): void {
   token.value = newToken
@@ -27,7 +35,7 @@ function login(newToken: string): void {
 }
 
 function logout(): void {
-  token.value = null
+  token.value = '';
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
   } catch {

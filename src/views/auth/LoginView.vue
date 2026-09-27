@@ -1,10 +1,24 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { InputPassword, Checkbox, Button, Message, InputText } from 'primevue'
-
+import { useRoute, useRouter } from 'vue-router'
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Checkbox from 'primevue/checkbox'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import AuthLayout from '../../components/auth/AuthLayout.vue'
+import { authApi, ApiError, extractValidationErrors, type LoginRequest } from '../../api'
+import { useAuth } from '../../composables/useAuth'
 
-const form = reactive({
+const route = useRoute()
+const router = useRouter()
+const auth = useAuth()
+
+interface LoginForm extends LoginRequest {
+  remember: boolean
+}
+
+const form = reactive<LoginForm>({
   email: '',
   password: '',
   remember: false,
@@ -15,10 +29,10 @@ const errors = reactive({
   password: '',
 })
 
-const submitted = ref<boolean>(false)
-const submitting = ref<boolean>(false)
+const submitting = ref(false)
+const generalError = ref('')
 
-function validate() {
+function validate(): boolean {
   errors.email = ''
   errors.password = ''
 
@@ -35,16 +49,34 @@ function validate() {
   return !errors.email && !errors.password
 }
 
-function handleSubmit() {
-  submitted.value = false
+async function handleSubmit(): Promise<void> {
+  generalError.value = ''
   if (!validate()) return
 
-  // TODO: integrar com o endpoint de autenticação da API quando estiver pronto.
   submitting.value = true
-  setTimeout(() => {
+  try {
+    const response = await authApi.login({ email: form.email, password: form.password })
+    auth.login(response.accessToken)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/agenda'
+    router.push(redirect)
+  } catch (error) {
+    const fieldErrors = extractValidationErrors(error)
+    if (fieldErrors) {
+      errors.email = fieldErrors.email ?? errors.email
+      errors.password = fieldErrors.password ?? errors.password
+      return
+    }
+
+    if (error instanceof ApiError && error.hasStatus(401)) {
+      generalError.value = 'E-mail ou senha incorretos.'
+    } else if (error instanceof ApiError) {
+      generalError.value = error.message
+    } else {
+      generalError.value = 'Algo deu errado. Tente novamente.'
+    }
+  } finally {
     submitting.value = false
-    submitted.value = true
-  }, 600)
+  }
 }
 </script>
 
@@ -53,8 +85,8 @@ function handleSubmit() {
     <h1 class="auth-title">Bem-vindo de volta</h1>
     <p class="auth-subtitle">Entre para acessar a agenda do seu estúdio.</p>
 
-    <Message v-if="submitted" severity="success" :closable="false" class="auth-message">
-      Formulário validado. A integração com a API de login ainda será conectada aqui.
+    <Message v-if="generalError" severity="error" :closable="false" class="auth-message">
+      {{ generalError }}
     </Message>
 
     <form class="auth-form" novalidate @submit.prevent="handleSubmit">
@@ -74,7 +106,7 @@ function handleSubmit() {
 
       <div class="field">
         <label for="password">Senha</label>
-        <InputPassword
+        <Password
           id="password"
           v-model="form.password"
           placeholder="Sua senha"
