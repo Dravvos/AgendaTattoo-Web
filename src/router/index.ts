@@ -10,6 +10,8 @@ import ArtistsSettingsView from '@/views/ArtistsSettingsView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import StudioSettingsView from '@/views/StudioSettingsView.vue'
 import PublicBookingView from '@/views/PublicBookingView.vue'
+import ResetPasswordView from '@/views/auth/ResetPasswordView.vue'
+import ForgotPasswordView from '@/views/auth/ForgotPasswordView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +25,16 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+    },
+        {
+      path: '/esqueci-senha',
+      name: 'esqueci-senha',
+      component: ForgotPasswordView,
+    },
+    {
+      path: '/redefinir-senha',
+      name: 'redefinir-senha',
+      component: ResetPasswordView,
     },
     {
       path: '/cadastro',
