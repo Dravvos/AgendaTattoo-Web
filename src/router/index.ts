@@ -9,6 +9,7 @@ import AvailabilitySettingsView from '@/views/AvailabilitySettingsView.vue'
 import ArtistsSettingsView from '@/views/ArtistsSettingsView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import StudioSettingsView from '@/views/StudioSettingsView.vue'
+import PublicBookingView from '@/views/PublicBookingView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -64,6 +65,12 @@ const router = createRouter({
       name: 'estudio',
       component: StudioSettingsView,
       meta: { requiresAuth: true }
+    },
+    {
+      // Página pública (sem login) que o estúdio compartilha com os próprios clientes.
+      path: '/agendar/:slug',
+      name: 'agendar-publico',
+      component: PublicBookingView,
     }
 
 
