@@ -4,7 +4,7 @@ import 'primeicons/primeicons.css'
 
 import App from './App.vue'
 import router from './router'
-
+import Mask from 'primevue/mask'
 import AgendaTattooPreset from './theme/preset'
 import './assets/styles/global.css'
 import './assets/styles/auth.css'
@@ -32,5 +32,7 @@ app.component('Toast', Toast)
 app.component('Dialog', Dialog)
 app.use(DialogService)
 app.use(router)
+app.directive('mask', Mask);
+
 
 app.mount('#app')

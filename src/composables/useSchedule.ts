@@ -18,7 +18,6 @@ function toArtist(dto: ArtistDto, index: number): Artist {
 }
 
 function toAppointment(dto: AppointmentDto): Appointment {
-  debugger;
   const status = KNOWN_STATUSES.includes(dto.status as AppointmentStatus)
     ? (dto.status as AppointmentStatus)
     : 'pendente'

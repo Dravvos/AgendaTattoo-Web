@@ -9,23 +9,20 @@ import InputPassword from 'primevue/inputpassword'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import type { StaffMemberDto } from '@/types/settings'
-import { useAuth } from '@/composables/useAuth'
 import { jwtDecode } from 'jwt-decode'
-import { staffApi } from '../services/staffApi'
+import { staffApi } from '@/api/staffApi'
+import type { StaffMemberDto } from '@/types/settings'
 import DashboardLayout from '@/components/dashboard/DashboardLayout.vue'
+import { useAuth } from '@/composables/useAuth'
+import router from '@/router'
 
-const toast = useToast();
-const confirm = useConfirm();
-const auth = useAuth();
+const toast = useToast()
+const confirm = useConfirm()
+const auth = useAuth()
 
-const isOwner = computed(() => {
-  const token = auth.token;
-  const decodedToken: any = jwtDecode(token.value);
-
-  return decodedToken.role.includes('Owner');
-
-})
+const decodedToken = computed<any>(() => jwtDecode(auth.token.value))
+const isOwner = computed(() => decodedToken.value.role?.includes('Owner') ?? false)
+const currentUserId = computed<string>(() => decodedToken.value.sub)
 
 const members = ref<StaffMemberDto[]>([])
 const loading = ref(false)
@@ -211,116 +208,150 @@ async function reactivate(member: StaffMemberDto) {
 }
 
 function isSelf(member: StaffMemberDto): boolean {
-  const token = auth.token;
-  const decodedToken = jwtDecode(token.value);
-  return member.id === decodedToken.sub
+  return member.id === currentUserId.value
 }
 
 function roleLabel(role: StaffMemberDto['role']): string {
   return role === 'Owner' ? 'Dono' : 'Tatuador'
 }
 
-onMounted(loadMembers)
+onMounted(() => {
+  if (!auth.isAuthenticated.value) {
+    router.push('/login')
+    auth.logout()
+    return
+  }
+  loadMembers()
+})
 </script>
 
 <template>
   <DashboardLayout>
-<div class="staff-settings">
-    <div class="staff-settings__header">
-      <div>
-        <h1>Equipe</h1>
-        <p>
-          Quem tem acesso à agenda do estúdio. Funciona tanto para um estúdio com vários
-          tatuadores quanto para quem trabalha sozinho.
+    <div class="staff-settings">
+      <div class="staff-settings__header">
+        <div>
+          <h1>Equipe</h1>
+          <p>
+            Quem tem acesso à agenda do estúdio. Funciona tanto para um estúdio com vários
+            tatuadores quanto para quem trabalha sozinho.
+          </p>
+        </div>
+        <Button v-if="isOwner" label="Novo artista" icon="pi pi-user-plus" @click="openInviteDialog" />
+      </div>
+
+      <DataTable :value="members" :loading="loading" dataKey="id" responsiveLayout="scroll">
+        <Column field="fullName" header="Nome" />
+        <Column field="email" header="E-mail" />
+        <Column field="role" header="Função">
+          <template #body="{ data }">
+            <Tag :severity="data.role === 'Owner' ? 'info' : 'secondary'" :value="roleLabel(data.role)" />
+          </template>
+        </Column>
+        <Column field="isActive" header="Status">
+          <template #body="{ data }">
+            <Tag :severity="data.isActive ? 'success' : 'danger'" :value="data.isActive ? 'Ativo' : 'Inativo'" />
+          </template>
+        </Column>
+        <Column v-if="isOwner" header="" :style="{ width: '9rem' }">
+          <template #body="{ data }">
+            <Button icon="pi pi-pencil" text rounded aria-label="Editar nome" @click="openEditDialog(data)" />
+            <Button
+              v-if="data.isActive"
+              icon="pi pi-user-minus"
+              text
+              rounded
+              severity="danger"
+              :disabled="data.role === 'Owner' || isSelf(data)"
+              :aria-label="data.role === 'Owner' ? 'O dono não pode ser desativado' : 'Desativar'"
+              @click="confirmDeactivate(data)"
+            />
+            <Button
+              v-else
+              icon="pi pi-user-plus"
+              text
+              rounded
+              severity="success"
+              aria-label="Reativar"
+              @click="reactivate(data)"
+            />
+          </template>
+        </Column>
+        <template #empty>Nenhum membro cadastrado ainda.</template>
+      </DataTable>
+
+      <!-- Convidar novo artista -->
+      <Dialog v-model:visible="inviteDialogVisible" modal header="Novo artista" :style="{ width: '26rem' }">
+        <p class="staff-settings__hint">
+          Sem convite por e-mail ainda — defina o e-mail e uma senha inicial; a pessoa pode
+          trocá-la depois de entrar.
         </p>
-      </div>
-      <Button v-if="isOwner" label="Novo artista" icon="pi pi-user-plus" @click="openInviteDialog" />
+
+        <div class="staff-settings__field">
+          <label for="invite-name">Nome completo</label>
+          <InputText id="invite-name" v-model="inviteForm.fullName" :invalid="!!inviteErrors.fullName" fluid />
+          <small v-if="inviteErrors.fullName" class="staff-settings__error">{{ inviteErrors.fullName }}</small>
+        </div>
+
+        <div class="staff-settings__field">
+          <label for="invite-email">E-mail</label>
+          <InputText
+            id="invite-email"
+            v-model="inviteForm.email"
+            type="email"
+            :invalid="!!inviteErrors.email"
+            fluid
+          />
+          <small v-if="inviteErrors.email" class="staff-settings__error">{{ inviteErrors.email }}</small>
+        </div>
+
+        <div class="staff-settings__field">
+          <label for="invite-password">Senha inicial</label>
+          <InputPassword
+            id="invite-password"
+            v-model="inviteForm.password"
+            :invalid="!!inviteErrors.password"
+            toggleMask
+            fluid
+          />
+          <small v-if="inviteErrors.password" class="staff-settings__error">{{ inviteErrors.password }}</small>
+        </div>
+
+        <div class="staff-settings__field">
+          <label for="invite-confirm-password">Confirmar senha</label>
+          <InputPassword
+            id="invite-confirm-password"
+            v-model="inviteForm.confirmPassword"
+            :invalid="!!inviteErrors.confirmPassword"
+            :feedback="false"
+            toggleMask
+            fluid
+          />
+          <small v-if="inviteErrors.confirmPassword" class="staff-settings__error">
+            {{ inviteErrors.confirmPassword }}
+          </small>
+        </div>
+
+        <template #footer>
+          <Button label="Cancelar" text @click="inviteDialogVisible = false" />
+          <Button label="Adicionar" :loading="inviting" @click="submitInvite" />
+        </template>
+      </Dialog>
+
+      <!-- Editar nome -->
+      <Dialog v-model:visible="editDialogVisible" modal header="Editar membro" :style="{ width: '22rem' }">
+        <div class="staff-settings__field">
+          <label for="edit-name">Nome completo</label>
+          <InputText id="edit-name" v-model="editForm.fullName" :invalid="!!editError" fluid />
+          <small v-if="editError" class="staff-settings__error">{{ editError }}</small>
+        </div>
+
+        <template #footer>
+          <Button label="Cancelar" text @click="editDialogVisible = false" />
+          <Button label="Salvar" :loading="saving" @click="submitEdit" />
+        </template>
+      </Dialog>
     </div>
-
-    <DataTable :value="members" :loading="loading" dataKey="id" responsiveLayout="scroll">
-      <Column field="fullName" header="Nome" />
-      <Column field="email" header="E-mail" />
-      <Column field="role" header="Função">
-        <template #body="{ data }">
-          <Tag :severity="data.role === 'Owner' ? 'info' : 'secondary'" :value="roleLabel(data.role)" />
-        </template>
-      </Column>
-      <Column field="isActive" header="Status">
-        <template #body="{ data }">
-          <Tag :severity="data.isActive ? 'success' : 'danger'" :value="data.isActive ? 'Ativo' : 'Inativo'" />
-        </template>
-      </Column>
-      <Column v-if="isOwner" header="" :style="{ width: '9rem' }">
-        <template #body="{ data }">
-          <Button icon="pi pi-pencil" text rounded aria-label="Editar nome" @click="openEditDialog(data)" />
-          <Button v-if="data.isActive" icon="pi pi-user-minus" text rounded severity="danger"
-            :disabled="data.role === 'Owner' || isSelf(data)"
-            :aria-label="data.role === 'Owner' ? 'O dono não pode ser desativado' : 'Desativar'"
-            @click="confirmDeactivate(data)" />
-          <Button v-else icon="pi pi-user-plus" text rounded severity="success" aria-label="Reativar"
-            @click="reactivate(data)" />
-        </template>
-      </Column>
-      <template #empty>Nenhum membro cadastrado ainda.</template>
-    </DataTable>
-
-    <!-- Convidar novo artista -->
-    <Dialog v-model:visible="inviteDialogVisible" modal header="Novo artista" :style="{ width: '26rem' }">
-      <p class="staff-settings__hint">
-        Sem convite por e-mail ainda — defina o e-mail e uma senha inicial; a pessoa pode
-        trocá-la depois de entrar.
-      </p>
-
-      <div class="staff-settings__field">
-        <label for="invite-name">Nome completo</label>
-        <InputText id="invite-name" v-model="inviteForm.fullName" :invalid="!!inviteErrors.fullName" fluid />
-        <small v-if="inviteErrors.fullName" class="staff-settings__error">{{ inviteErrors.fullName }}</small>
-      </div>
-
-      <div class="staff-settings__field">
-        <label for="invite-email">E-mail</label>
-        <InputText id="invite-email" v-model="inviteForm.email" type="email" :invalid="!!inviteErrors.email" fluid />
-        <small v-if="inviteErrors.email" class="staff-settings__error">{{ inviteErrors.email }}</small>
-      </div>
-
-      <div class="staff-settings__field">
-        <label for="invite-password">Senha inicial</label>
-        <InputPassword id="invite-password" v-model="inviteForm.password" :invalid="!!inviteErrors.password" toggleMask
-          fluid />
-        <small v-if="inviteErrors.password" class="staff-settings__error">{{ inviteErrors.password }}</small>
-      </div>
-
-      <div class="staff-settings__field">
-        <label for="invite-confirm-password">Confirmar senha</label>
-        <InputPassword id="invite-confirm-password" v-model="inviteForm.confirmPassword"
-          :invalid="!!inviteErrors.confirmPassword" :feedback="false" toggleMask fluid />
-        <small v-if="inviteErrors.confirmPassword" class="staff-settings__error">
-          {{ inviteErrors.confirmPassword }}
-        </small>
-      </div>
-
-      <template #footer>
-        <Button label="Cancelar" text @click="inviteDialogVisible = false" />
-        <Button label="Adicionar" :loading="inviting" @click="submitInvite" />
-      </template>
-    </Dialog>
-
-    <!-- Editar nome -->
-    <Dialog v-model:visible="editDialogVisible" modal header="Editar membro" :style="{ width: '22rem' }">
-      <div class="staff-settings__field">
-        <label for="edit-name">Nome completo</label>
-        <InputText id="edit-name" v-model="editForm.fullName" :invalid="!!editError" fluid />
-        <small v-if="editError" class="staff-settings__error">{{ editError }}</small>
-      </div>
-
-      <template #footer>
-        <Button label="Cancelar" text @click="editDialogVisible = false" />
-        <Button label="Salvar" :loading="saving" @click="submitEdit" />
-      </template>
-    </Dialog>
-  </div>
   </DashboardLayout>
-
 </template>
 
 <style scoped>

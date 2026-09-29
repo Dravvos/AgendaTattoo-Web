@@ -6,7 +6,7 @@ import { onMounted, ref } from 'vue'
 import { apiClient } from '@/api/client.ts'
 import { jwtDecode } from 'jwt-decode'
 import { useSchedule } from '@/composables/useSchedule.ts'
-import type { studioDto } from '@/types/studio.ts'
+import type { StudioDto } from '@/types/studio'
 
 const router = useRouter()
 const auth = useAuth()
@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Clientes', to: '/clientes', enabled: true },
   { label: 'Serviços', to: '/servicos', enabled: true },
   { label: 'Disponibilidade', to: '/disponibilidade', enabled: true },
+  { label: 'Estúdio', to: '/estudio', enabled: true },
 ]
 
 function handleLogout(): void {
@@ -33,7 +34,7 @@ onMounted(async () => {
     currentStudioName.value = studioName;
   }
   else {
-    const studio = await apiClient.get<studioDto>('/me/getStudio');
+    const studio = await apiClient.get<StudioDto>('/me/getStudio');
     currentStudioName.value = studio.name
     sessionStorage.setItem('studioName', studio.name);
   }

@@ -5,7 +5,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import InputMask from 'primevue/inputmask'
+import  Mask  from 'primevue/mask'
 import Textarea from 'primevue/textarea'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
@@ -210,7 +210,7 @@ onMounted(() => {
 
         <div class="clients-view__field">
           <label for="client-phone">Telefone</label>
-          <InputMask id="client-phone" mask="(99) 9 9999-9999" v-model="form.phoneNumber" :invalid="!!formErrors.phoneNumber" fluid :loading="loading" required />
+          <Mask id="client-phone" mask="(99) 9 9999-9999" v-model="form.phoneNumber" :invalid="!!formErrors.phoneNumber" fluid :loading="loading" required />
           <small v-if="formErrors.phoneNumber" class="clients-view__error">{{ formErrors.phoneNumber }}</small>
         </div>
 

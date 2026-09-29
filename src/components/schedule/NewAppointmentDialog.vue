@@ -128,7 +128,6 @@ async function handleSubmit(): Promise<void> {
 
   submitting.value = true
   try {
-    debugger;
     let start = new Date(form.dayKey).setHours(parseInt(form.startsAt.substring(0, 2)))
     const result = await props.onSubmit({
       artistId: form.artistId,

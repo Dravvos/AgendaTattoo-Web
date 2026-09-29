@@ -8,6 +8,7 @@ import ServiceSettingsView from '@/views/ServiceSettingsView.vue'
 import AvailabilitySettingsView from '@/views/AvailabilitySettingsView.vue'
 import ArtistsSettingsView from '@/views/ArtistsSettingsView.vue'
 import ClientsView from '@/views/ClientsView.vue'
+import StudioSettingsView from '@/views/StudioSettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -57,7 +58,14 @@ const router = createRouter({
       name: 'clientes',
       component: ClientsView,
       meta: { requiresAuth: true }
+    },
+        {
+      path: '/estudio',
+      name: 'estudio',
+      component: StudioSettingsView,
+      meta: { requiresAuth: true }
     }
+
 
     // Qualquer nova rota dentro da área logada (sob o DashboardLayout) deve
     // levar `meta: { requiresAuth: true }` também.

@@ -87,3 +87,8 @@ export interface UpdateClientRequest {
   email?: string | null
   notes?: string | null
 }
+
+
+
+
+
