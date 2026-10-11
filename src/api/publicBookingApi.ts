@@ -6,6 +6,7 @@ import type {
   AvailableSlotDto,
   CreatePublicBookingRequest,
   PublicBookingResponse,
+  PublicAvailabilityCalendarDto
 } from '../types/public'
 
 // Sem prefixo /api (já incluso em API_BASE_URL) — rotas [AllowAnonymous] no backend.
@@ -17,6 +18,11 @@ export const publicBookingApi = {
     apiClient.get<AvailableSlotDto[]>(`/public/studios/${slug}/availability`, {
       params: { artistId, serviceId, date },
     }),
+      getCalendar: (slug: string, artistId: string, from: string, to: string) =>
+    apiClient.get<PublicAvailabilityCalendarDto>(`/public/studios/${slug}/availability/calendar`, {
+      params: { artistId, from, to },
+    }),
+
   createBooking: (slug: string, data: CreatePublicBookingRequest) =>
     apiClient.post<PublicBookingResponse>(`/public/studios/${slug}/bookings`, data),
 }

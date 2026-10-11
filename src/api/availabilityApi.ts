@@ -1,17 +1,24 @@
 import { apiClient } from './client'
-import type { WorkingHoursDto, SetWorkingHoursRequest, StaffMemberDto } from '@/types/settings'
+import type {
+  WorkingHoursDto,
+  SetWorkingHoursRequest,
+  ArtistTimeOffDto,
+  CreateArtistTimeOffRequest,
+} from '@/types/settings'
 
 export const availabilityApi = {
   get: (artistId: string) => apiClient.get<WorkingHoursDto[]>(`/artists/${artistId}/working-hours`),
   set: (artistId: string, data: SetWorkingHoursRequest) =>
     apiClient.put<void>(`/artists/${artistId}/working-hours`, data),
+
+  listTimeOff: (artistId: string, from: string, to: string) =>
+    apiClient.get<ArtistTimeOffDto[]>(`/artists/${artistId}/time-off`, { params: { from, to } }),
+  addTimeOff: (artistId: string, data: CreateArtistTimeOffRequest) =>
+    apiClient.post<ArtistTimeOffDto>(`/artists/${artistId}/time-off`, data),
+  removeTimeOff: (artistId: string, timeOffId: string) =>
+    apiClient.delete<void>(`/artists/${artistId}/time-off/${timeOffId}`),
 }
 
-// ATENÇÃO: /api/studio/members ainda NÃO existe no backend fornecido.
-// O único endpoint que lista artistas hoje é o público (PublicBookingController.ListArtists,
-// por slug, sem autenticação, só retorna quem está ativo). Para o dono escolher de quem
-// configurar a disponibilidade nesta tela, é necessário criar um endpoint interno autenticado
-// que liste os membros (Owner + Artists) do estúdio do usuário logado.
-export const staffApi = {
-  list: () => apiClient.get<StaffMemberDto[]>('/api/me/members'),
-}
+// O antigo placeholder `staffApi` que morava aqui (apontando pra `/api/me/members`, com um bug
+// de prefixo duplicado) foi removido — a lista de artistas/equipe agora vive em src/api/staffApi.ts,
+// contra o endpoint real api/studio/members.

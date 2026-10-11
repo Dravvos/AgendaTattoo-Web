@@ -7,6 +7,7 @@ export interface PublicStudioDto {
   address: string | null
   phoneNumber: string | null
   slug?: string | null
+  timeZoneId?: string | null
 }
 
 export interface PublicServiceDto {
@@ -43,3 +44,10 @@ export interface PublicBookingResponse {
   endsAt: string
   status: string
 }
+
+// Espelha AgendaTattoo.DTO.Public.PublicAvailabilityCalendarDto.
+export interface PublicAvailabilityCalendarDto {
+  workingDays: number[] // System.DayOfWeek: 0 = domingo ... 6 = sábado
+  blockedDates: string[] // "yyyy-MM-dd" (System.DateOnly) — folga/feriado de dia inteiro
+}
+

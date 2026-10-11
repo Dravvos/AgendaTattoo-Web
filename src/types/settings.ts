@@ -89,6 +89,40 @@ export interface UpdateClientRequest {
 }
 
 
+export interface WorkingHoursDto {
+  dayOfWeek: DayOfWeekNumber
+  startTime: string // "HH:mm:ss" (System.TimeOnly serializado)
+  endTime: string // "HH:mm:ss"
+}
+
+export interface WorkingHoursEntryRequest {
+  dayOfWeek: DayOfWeekNumber
+  startTime: string
+  endTime: string
+}
+
+export interface SetWorkingHoursRequest {
+  days: WorkingHoursEntryRequest[]
+}
+
+// Espelha AgendaTattoo.DTO.Scheduling.ArtistTimeOffDto / CreateArtistTimeOffRequest.
+// startTime/endTime nulos juntos = dia inteiro bloqueado; preenchidos = só aquele intervalo.
+export interface ArtistTimeOffDto {
+  id: string
+  date: string // "yyyy-MM-dd" (System.DateOnly serializado)
+  startTime: string | null // "HH:mm:ss"
+  endTime: string | null
+  reason: string | null
+}
+
+export interface CreateArtistTimeOffRequest {
+  date: string
+  startTime?: string | null
+  endTime?: string | null
+  reason?: string | null
+}
+
+
 
 
 

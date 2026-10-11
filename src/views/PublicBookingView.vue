@@ -10,8 +10,14 @@ import Skeleton from 'primevue/skeleton'
 import LogoMark from '@/components/landing/LogoMark.vue'
 import { publicBookingApi } from '@/api/publicBookingApi'
 import { ApiError } from '@/api'
-import type { PublicStudioDto, PublicServiceDto, PublicArtistDto, AvailableSlotDto } from '@/types/public'
-import { toDateKey, formatDayOptionLabel } from '@/utils/date'
+import type {
+  PublicStudioDto,
+  PublicServiceDto,
+  PublicArtistDto,
+  AvailableSlotDto,
+  PublicAvailabilityCalendarDto,
+} from '@/types/public'
+import { addDays, toDateKey, formatDayOptionLabel } from '@/utils/date'
 
 const route = useRoute()
 const slug = String(route.params.slug ?? '')
@@ -121,16 +127,105 @@ async function loadSlots() {
   }
 }
 
-watch(step, (s) => {
-  if (s === 'datetime') loadSlots()
-})
-watch(selectedDate, () => {
-  if (step.value === 'datetime') loadSlots()
+// --- Calendário: bloqueia dias em que o tatuador não atende e folgas/feriados de dia inteiro ---
+const CALENDAR_RANGE_DAYS = 180 // janela de agendamento oferecida (~6 meses)
+const calendar = ref<PublicAvailabilityCalendarDto | null>(null)
+const loadingCalendar = ref(false)
+const calendarError = ref('')
+
+function startOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function parseDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year!, month! - 1, day)
+}
+
+const maxBookingDate = computed(() => addDays(startOfToday(), CALENDAR_RANGE_DAYS))
+
+// PrimeVue: disabledDays usa 0 = domingo (mesma convenção do System.DayOfWeek).
+const disabledDays = computed(() => {
+  if (!calendar.value) return []
+  const working = new Set(calendar.value.workingDays)
+  return [0, 1, 2, 3, 4, 5, 6].filter((day) => !working.has(day))
 })
 
+const blockedDateKeys = computed(() => new Set(calendar.value?.blockedDates ?? []))
+const disabledDates = computed(() => (calendar.value?.blockedDates ?? []).map(parseDateKey))
+
+function isDateSelectable(date: Date): boolean {
+  if (!calendar.value) return true
+  return !disabledDays.value.includes(date.getDay()) && !blockedDateKeys.value.has(toDateKey(date))
+}
+
+function findFirstSelectableDate(): Date | null {
+  const today = startOfToday()
+  for (let offset = 0; offset <= CALENDAR_RANGE_DAYS; offset++) {
+    const candidate = addDays(today, offset)
+    if (isDateSelectable(candidate)) return candidate
+  }
+  return null
+}
+
+const noAvailableDates = computed(() => !!calendar.value && findFirstSelectableDate() === null)
+
+async function loadCalendar() {
+  if (!selectedArtist.value) return
+  loadingCalendar.value = true
+  calendarError.value = ''
+  try {
+    const today = startOfToday()
+    calendar.value = await publicBookingApi.getCalendar(
+      slug,
+      selectedArtist.value.id,
+      toDateKey(today),
+      toDateKey(addDays(today, CALENDAR_RANGE_DAYS)),
+    )
+    // Se a data que estava selecionada caiu num dia bloqueado (ex.: trocou de tatuador), pula pra
+    // primeira data disponível — mantém a escolha atual quando ela continua válida.
+    if (!isDateSelectable(selectedDate.value)) {
+      const first = findFirstSelectableDate()
+      if (first) selectedDate.value = first
+    }
+  } catch (error) {
+    // Sem o calendário os dias bloqueados não ficam desabilitados (a grade de horários continua
+    // correta e vazia nesses dias). Antes esse erro era engolido em silêncio; agora aparece na tela
+    // e no console para dar pra diagnosticar (ex.: endpoint ainda não publicado no backend → 404).
+    console.error('Falha ao carregar o calendário de disponibilidade:', error)
+    calendarError.value = (error as Error).message
+    calendar.value = null
+  } finally {
+    loadingCalendar.value = false
+  }
+}
+
+watch(step, async (s) => {
+  if (s !== 'datetime') return
+  await loadCalendar()
+  if (!noAvailableDates.value) loadSlots()
+})
+
+function onDateChange(date: Date | null | undefined) {
+  if (!(date instanceof Date)) return
+  // Defesa extra: data digitada à mão num dia bloqueado não passa.
+  if (!isDateSelectable(date)) return
+  selectedDate.value = date
+  loadSlots()
+}
+
+// Os horários da grade são calculados no fuso do estúdio, então são exibidos nele (e não no fuso
+// do navegador de quem agenda) — senão uma folga das 14h–16h pareceria deslocada para quem está em outro fuso.
 function formatTime(iso: string): string {
   const date = new Date(iso)
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const timeZone = studio.value?.timeZoneId || undefined
+  try {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone })
+  } catch {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
 }
 
 function selectSlot(slot: AvailableSlotDto) {
@@ -206,8 +301,7 @@ async function submitBooking() {
     if (error instanceof ApiError && error.hasStatus(409)) {
       // Horário deixou de estar disponível — volta pra escolha de horário com a grade atualizada.
       submitError.value = error.message
-      step.value = 'datetime'
-      await loadSlots()
+      step.value = 'datetime' // o watcher de `step` recarrega calendário e horários
     } else {
       submitError.value = (error as Error).message
     }
@@ -349,9 +443,26 @@ onMounted(loadStudio)
               {{ selectedService?.name }}<span v-if="selectedArtist"> com {{ selectedArtist.fullName }}</span>
             </p>
 
-            <DatePicker v-model="selectedDate" :minDate="new Date()" dateFormat="dd/mm/yy" showIcon />
+            <Message v-if="calendarError" severity="warn" :closable="false" class="public-booking__submit-error">
+              Não foi possível carregar os dias indisponíveis deste tatuador ({{ calendarError }}). Alguns dias bloqueados podem aparecer como livres.
+            </Message>
+            <Skeleton v-if="loadingCalendar" height="42px" width="12rem" />
+            <Message v-else-if="noAvailableDates" severity="info" :closable="false">
+              Esse tatuador não tem datas disponíveis nos próximos meses. Tente outro tatuador ou entre em contato com o estúdio.
+            </Message>
+            <DatePicker
+              v-else
+              :modelValue="selectedDate"
+              :minDate="new Date()"
+              :maxDate="maxBookingDate"
+              :disabledDays="disabledDays"
+              :disabledDates="disabledDates"
+              dateFormat="dd/mm/yy"
+              showIcon
+              @update:vmodel="onDateChange"
+            />
 
-            <div class="public-booking__slots">
+            <div v-if="!loadingCalendar && !noAvailableDates" class="public-booking__slots">
               <Skeleton v-if="loadingSlots" height="120px" />
               <Message v-else-if="slotsError" severity="error" :closable="false">{{ slotsError }}</Message>
               <p v-else-if="slots.length === 0" class="public-booking__empty-slots">
@@ -395,7 +506,7 @@ onMounted(loadStudio)
               <div class="public-booking__field">
                 <label for="contact-phone">Telefone (WhatsApp)</label>
                 <InputText
-                  id="contact-phone" v-mask="'(99) 99999-9999'"
+                  id="contact-phone"
                   v-model="contactForm.phoneNumber"
                   :invalid="!!contactErrors.phoneNumber"
                   fluid
