@@ -208,7 +208,7 @@ watch(step, async (s) => {
   if (!noAvailableDates.value) loadSlots()
 })
 
-function onDateChange(date: Date | null | undefined) {
+function onDateChange(date: any) {
   if (!(date instanceof Date)) return
   // Defesa extra: data digitada à mão num dia bloqueado não passa.
   if (!isDateSelectable(date)) return
@@ -452,14 +452,15 @@ onMounted(loadStudio)
             </Message>
             <DatePicker
               v-else
-              :modelValue="selectedDate"
+              v-model="selectedDate"              
               :minDate="new Date()"
               :maxDate="maxBookingDate"
               :disabledDays="disabledDays"
               :disabledDates="disabledDates"
               dateFormat="dd/mm/yy"
               showIcon
-              @update:vmodel="onDateChange"
+              @update:modelValue="onDateChange"
+              
             />
 
             <div v-if="!loadingCalendar && !noAvailableDates" class="public-booking__slots">
