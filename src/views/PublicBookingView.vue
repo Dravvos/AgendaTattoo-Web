@@ -277,7 +277,7 @@ function validateContact(): boolean {
   return valid
 }
 
-const bookingResult = ref<{ startsAt: string; endsAt: string; status: string } | null>(null)
+const bookingResult = ref<{ appointmentId: string; startsAt: string; endsAt: string; status: string } | null>(null)
 
 async function submitBooking() {
   if (!selectedArtist.value || !selectedService.value || !selectedSlot.value) return
@@ -549,6 +549,9 @@ onMounted(loadStudio)
             <p class="public-booking__done-status">
               Status: aguardando confirmação do estúdio. Você será contatado pelo telefone informado.
             </p>
+            <router-link v-if="bookingResult" :to="`/agendar/${slug}/anamnese/${bookingResult.appointmentId}`">
+  <Button label="Preencher ficha de anamnese" size="large" />
+</router-link>
             <Button label="Fazer outro agendamento" text @click="startOver" />
           </section>
         </template>

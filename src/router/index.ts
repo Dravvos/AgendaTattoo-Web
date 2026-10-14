@@ -12,6 +12,7 @@ import StudioSettingsView from '@/views/StudioSettingsView.vue'
 import PublicBookingView from '@/views/PublicBookingView.vue'
 import ResetPasswordView from '@/views/auth/ResetPasswordView.vue'
 import ForgotPasswordView from '@/views/auth/ForgotPasswordView.vue'
+import PublicAnamnesisView from '@/views/PublicAnamnesisView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -83,8 +84,12 @@ const router = createRouter({
       path: '/agendar/:slug',
       name: 'agendar-publico',
       component: PublicBookingView,
-    }
-
+    },
+{
+  path: '/agendar/:slug/anamnese/:appointmentId',
+  name: 'anamnese-publica',
+  component: PublicAnamnesisView,
+}
 
     // Qualquer nova rota dentro da área logada (sob o DashboardLayout) deve
     // levar `meta: { requiresAuth: true }` também.

@@ -8,6 +8,26 @@ import { APPOINTMENT_STATUS_LABEL } from '../../types/schedule'
 import type { ScheduleActionResult } from '../../composables/useSchedule'
 import { formatDayOptionLabel, formatTimeRange } from '../../utils/date'
 
+import { anamnesisApi } from '@/api/anamnesisApi'
+import type { AnamnesisFormDto } from '@/types/anamnesis'
+
+const anamnesis = ref<AnamnesisFormDto | null>(null)
+const anamnesisLoading = ref(false)
+const visible = defineModel<boolean>('visible', { required: true })
+
+watch(visible, async (isVisible) => {
+  if (!isVisible) return
+  cancelError.value = ''
+  anamnesis.value = null
+  if (!props.appointment) return
+  anamnesisLoading.value = true
+  try {
+    anamnesis.value = await anamnesisApi.getForAppointment(props.appointment.id)
+  } finally {
+    anamnesisLoading.value = false
+  }
+})
+
 const props = defineProps<{
   appointment: Appointment | null
   artist: Artist | undefined
@@ -15,14 +35,10 @@ const props = defineProps<{
   onCancel: (appointment: Appointment) => Promise<ScheduleActionResult>
 }>()
 
-const visible = defineModel<boolean>('visible', { required: true })
 
 const cancelling = ref(false)
 const cancelError = ref('')
 
-watch(visible, (isVisible) => {
-  if (isVisible) cancelError.value = ''
-})
 
 async function handleCancel(): Promise<void> {
   if (!props.appointment) return
@@ -70,6 +86,22 @@ async function handleCancel(): Promise<void> {
         <span class="details__label">Status</span>
         <span class="details__value">{{ APPOINTMENT_STATUS_LABEL[appointment.status] }}</span>
       </div>
+      <div class="details__row" v-if="!anamnesisLoading">
+  <span class="details__label">Ficha de anamnese</span>
+  <span v-if="anamnesis" class="details__value">Enviada — assinada por {{ anamnesis.signatureFullName }}</span>
+  <span v-else class="details__value">Ainda não enviada pelo cliente</span>
+</div>
+<div v-if="anamnesis?.hasAllergies || anamnesis?.hasSkinConditions || anamnesis?.hadPreviousTattooReaction"
+  class="details__row">
+  <span class="details__label">Alertas de saúde</span>
+  <span class="details__value">
+    <span v-if="anamnesis.hasAllergies">Alergias: {{ anamnesis.allergiesDescription || 'não especificado' }}. </span>
+    <span v-if="anamnesis.hasSkinConditions">Pele: {{ anamnesis.skinConditionsDescription || 'não especificado' }}. </span>
+    <span v-if="anamnesis.hadPreviousTattooReaction">
+      Reação anterior: {{ anamnesis.previousTattooReactionDescription || 'não especificado' }}.
+    </span>
+  </span>
+</div>
     </div>
 
     <template #footer>
